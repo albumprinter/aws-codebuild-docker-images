@@ -24,6 +24,10 @@ ENV DOCKER_BUCKET="download.docker.com" \
 RUN set -ex \
     && echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99use-gzip-compression \
     && apt-get update \
+    && apt install -y apt-transport-https \
+    && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF \
+    && echo "deb https://download.mono-project.com/repo/ubuntu stable-trusty main" | tee /etc/apt/sources.list.d/mono-official-stable.list \
+    && apt-get update \
     && apt-get install software-properties-common -y --no-install-recommends \
     && apt-add-repository ppa:git-core/ppa \
     && apt-get update \
@@ -48,7 +52,7 @@ RUN set -ex \
        libxml2-dev=2.9.* libxslt1-dev=1.1.* libyaml-dev=0.1.* make=3.81-* \
        patch=2.7.* xz-utils=5.1.* zlib1g-dev=1:1.2.* unzip=6.0-* curl=7.35.* \
        e2fsprogs=1.42.* iptables=1.4.* xfsprogs=3.1.* xz-utils=5.1.* \
-       mono-mcs=3.2.* less=458-* groff=1.22.* liberror-perl=0.17-* \
+       mono-devel=5.14.* less=458-* groff=1.22.* liberror-perl=0.17-* \
        asciidoc=8.6.* build-essential=11.* bzr=2.6.* cvs=2:1.12.* cvsps=2.1-* docbook-xml=4.5-* docbook-xsl=1.78.* dpkg-dev=1.17.* \
        libdbd-sqlite3-perl=1.40-* libdbi-perl=1.630-* libdpkg-perl=1.17.* libhttp-date-perl=6.02-* \
        libio-pty-perl=1:1.08-* libserf-1-1=1.3.* libsvn-perl=1.8.* libsvn1=1.8.* libtcl8.6=8.6.* libtimedate-perl=2.3000-* \
@@ -97,59 +101,58 @@ VOLUME /var/lib/docker
 
 COPY dockerd-entrypoint.sh /usr/local/bin/
 
-# Install .NET CLI dependencies
+ENV JAVA_VERSION=8 \
+    JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64" \
+    JDK_HOME="/usr/lib/jvm/java-8-openjdk-amd64" \
+    JRE_HOME="/usr/lib/jvm/java-8-openjdk-amd64" \
+    ANT_VERSION=1.10.3 \
+    MAVEN_HOME="/opt/maven" \
+    MAVEN_VERSION=3.5.4 \
+    MAVEN_CONFIG="/root/.m2" \
+    GRADLE_VERSION=4.2.1 \
+    PROPERTIES_COMMON_VERSION=0.92.37.8 \
+    PYTHON_TOOL_VERSION="3.3-*" \
+    JDK_VERSION="8u171-b11-2~14.04" \
+    ANT_DOWNLOAD_SHA512="73f2193700b1d1e32eedf25fab1009e2a98fb2f6425413f5c9fa1b0f2f9f49f59cb8ed3f04931c808ae022a64ecfa2619e5fb77643fea6dbc29721e489eb3a07" \
+    MAVEN_DOWNLOAD_SHA1="22cac91b3557586bb1eba326f2f7727543ff15e3" \
+    GRADLE_DOWNLOAD_SHA256="b551cc04f2ca51c78dd14edb060621f0e5439bdfafa6fd167032a09ac708fbc0"
+
 RUN set -ex \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libc6=2.19-* \
-        libcurl3=7.35.* \
-        libgcc1=1:4.9.* \
-        libgssapi-krb5-2=1.12* \
-        libicu52=52.1-* \
-        liblttng-ust0=2.4.* \
-        libssl1.0.0=1.0.* \
-        libunwind8=1.1-* \
-        libuuid1=2.20.* \
-        zlib1g=1:1.2.* \
-        software-properties-common=0.92.* \
-    && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
+    && apt-get install -y software-properties-common=$PROPERTIES_COMMON_VERSION \
+    && add-apt-repository ppa:openjdk-r/ppa \
     && apt-get update \
-    && apt-get install -y libstdc++6=8*\
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y python-setuptools=$PYTHON_TOOL_VERSION \
 
-# Install .NET Core SDK
-ENV DOTNET_SDK_VERSION 2.1.302
-ENV DOTNET_SDK_DOWNLOAD_URL https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz
-ENV DOTNET_SDK_DOWNLOAD_SHA 2166986e360f1c3456a33723edb80349e6ede115be04a6331bfbfd0f412494684d174a0cfb21d2feb00d509ce342030160a4b5b445e393ad83bedb613a64bc66
+    # Install OpenJDK 8
+    && apt-get install -y openjdk-${JAVA_VERSION}-jdk=$JDK_VERSION \
+    && apt-get install -y --no-install-recommends ca-certificates-java \
+    && apt-get clean \
+    # Ensure Java cacerts symlink points to valid location
+    && update-ca-certificates -f \
 
-RUN set -ex \
-    && curl -SL $DOTNET_SDK_DOWNLOAD_URL --output dotnet.tar.gz \
-    && echo "$DOTNET_SDK_DOWNLOAD_SHA dotnet.tar.gz" | sha512sum -c - \
-    && mkdir -p /usr/share/dotnet \
-    && tar -zxf dotnet.tar.gz -C /usr/share/dotnet \
-    && rm dotnet.tar.gz \
-    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+    # Install Ant
+    && curl -LSso /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz https://archive.apache.org/dist/ant/binaries/apache-ant-$ANT_VERSION-bin.tar.gz  \
+    && echo "$ANT_DOWNLOAD_SHA512 /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz" | sha512sum -c - \
+    && tar -xzf /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz -C /opt \
+    && update-alternatives --install /usr/bin/ant ant /opt/apache-ant-$ANT_VERSION/bin/ant 10000 \
 
-# Trigger the population of the local package cache
-ENV NUGET_XMLDOC_MODE skip
-RUN set -ex \
-    && mkdir warmup \
-    && cd warmup \
-    && dotnet new \
-    && cd .. \
-    && rm -rf warmup \
-    && rm -rf /tmp/NuGetScratch
+    # Install Maven
+    && mkdir -p $MAVEN_HOME \
+    && curl -LSso /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz https://apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
+    && echo "$MAVEN_DOWNLOAD_SHA1 /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz" | sha1sum -c - \
+    && tar xzvf /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz -C $MAVEN_HOME --strip-components=1 \
+    && update-alternatives --install /usr/bin/mvn mvn /opt/maven/bin/mvn 10000 \
+    && mkdir -p $MAVEN_CONFIG \
 
-# Install Powershell Core
-# See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
-ENV POWERSHELL_VERSION 6.0.3
-ENV POWERSHELL_DOWNLOAD_URL https://github.com/PowerShell/PowerShell/releases/download/v6.0.3/powershell-6.0.3-linux-x64.tar.gz
-ENV POWERSHELL_DOWNLOAD_SHA A43D3056688FABC442BFBE0FD7A096F7E28036759EFF9D6EBE8CB9155C9D9AAB
+    # Install Gradle
+    && curl -LSso /var/tmp/gradle-$GRADLE_VERSION-bin.zip https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip \
+    && echo "$GRADLE_DOWNLOAD_SHA256 /var/tmp/gradle-$GRADLE_VERSION-bin.zip" | sha256sum -c - \
+    && unzip /var/tmp/gradle-$GRADLE_VERSION-bin.zip -d /opt \
+    && update-alternatives --install /usr/local/bin/gradle gradle /opt/gradle-$GRADLE_VERSION/bin/gradle 10000 \
 
-RUN set -ex \
-    && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
-    && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
-    && mkdir -p /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && tar zxf powershell.tar.gz -C /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && rm powershell.tar.gz \
-    && ln -s /opt/microsoft/powershell/$POWERSHELL_VERSION/pwsh /usr/bin/pwsh
+    # Cleanup
+    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && apt-get clean
+
+COPY m2-settings.xml $MAVEN_CONFIG/settings.xml
