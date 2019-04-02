@@ -190,7 +190,7 @@ RUN set -ex \
      &&  ln -fs /opt/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver \
 
     # Cleanup
-    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && apt-get clean
+    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 
 COPY m2-settings.xml $MAVEN_CONFIG/settings.xml
