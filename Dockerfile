@@ -13,11 +13,11 @@
 FROM ubuntu:14.04.5
 
 ENV DOCKER_BUCKET="download.docker.com" \
-    DOCKER_VERSION="17.09.0-ce" \
+    DOCKER_VERSION="18.09.0" \
     DOCKER_CHANNEL="stable" \
-    DOCKER_SHA256="a9e90a73c3cdfbf238f148e1ec0eaff5eb181f92f35bdd938fd7dab18e1c4647" \
+    DOCKER_SHA256="08795696e852328d66753963249f4396af2295a7fe2847b839f7102e25e47cb9" \
     DIND_COMMIT="3b5fac462d21ca164b3778647420016315289034" \
-    DOCKER_COMPOSE_VERSION="1.21.2" \
+    DOCKER_COMPOSE_VERSION="1.23.2" \
     GITVERSION_VERSION="3.6.5"
 
 # Install git, SSH, and other utilities
@@ -40,7 +40,7 @@ RUN set -ex \
     && ssh-keyscan -t rsa,dsa -H bitbucket.org >> ~/.ssh/known_hosts \
     && chmod 600 ~/.ssh/known_hosts \
     && apt-get install -y --no-install-recommends \
-       wget=1.15-* python=2.7.* python2.7-dev=2.7.* fakeroot=1.20-* ca-certificates \
+       wget=1.15-* python3=3.4.* python3.4-dev=3.4.* fakeroot=1.20-* ca-certificates jq \
        tar=1.27.* gzip=1.6-* zip=3.0-* autoconf=2.69-* automake=1:1.14.* \
        bzip2=1.0.* file=1:5.14-* g++=4:4.8.* gcc=4:4.8.* imagemagick=8:6.7.* \
        libbz2-dev=1.0.* libc6-dev=2.19-* libcurl4-openssl-dev=7.35.* libdb-dev=1:5.3.* \
@@ -52,12 +52,13 @@ RUN set -ex \
        libxml2-dev=2.9.* libxslt1-dev=1.1.* libyaml-dev=0.1.* make=3.81-* \
        patch=2.7.* xz-utils=5.1.* zlib1g-dev=1:1.2.* unzip=6.0-* curl=7.35.* \
        e2fsprogs=1.42.* iptables=1.4.* xfsprogs=3.1.* xz-utils=5.1.* \
-       mono-devel=5.14.* less=458-* groff=1.22.* liberror-perl=0.17-* \
+       mono-devel=5.* less=458-* groff=1.22.* liberror-perl=0.17-* \
        asciidoc=8.6.* build-essential=11.* bzr=2.6.* cvs=2:1.12.* cvsps=2.1-* docbook-xml=4.5-* docbook-xsl=1.78.* dpkg-dev=1.17.* \
        libdbd-sqlite3-perl=1.40-* libdbi-perl=1.630-* libdpkg-perl=1.17.* libhttp-date-perl=6.02-* \
        libio-pty-perl=1:1.08-* libserf-1-1=1.3.* libsvn-perl=1.8.* libsvn1=1.8.* libtcl8.6=8.6.* libtimedate-perl=2.3000-* \
        libunistring0=0.9.* libxml2-utils=2.9.* libyaml-perl=0.84-* python-bzrlib=2.6.* python-configobj=4.7.* \
-       sgml-base=1.26+* sgml-data=2.0.* subversion=1.8.* tcl=8.6.* tcl8.6=8.6.* xml-core=0.13+* xmlto=0.0.* xsltproc=1.1.* \
+       sgml-base=1.26+* sgml-data=2.0.* subversion=1.8.* tcl=8.6.* tcl8.6=8.6.* xml-core=0.13+* xmlto=0.0.* xsltproc=1.1.* python3-pip \
+       tk=8.6.* gettext=0.18.* gettext-base=0.18.* libapr1=1.5.* libaprutil1=1.5.* libasprintf0c2=0.18.*  \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -92,68 +93,104 @@ RUN set -ex \
 # on the public repos.
 
 RUN set -ex \
-    && wget "https://bootstrap.pypa.io/2.6/get-pip.py" -O /tmp/get-pip.py \
-    && python /tmp/get-pip.py \
-    && pip install awscli==1.* \
-    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && pip3 install awscli boto3
 
 VOLUME /var/lib/docker
 
+# Configure SSH
+COPY ssh_config /root/.ssh/config
+
 COPY dockerd-entrypoint.sh /usr/local/bin/
 
-# Install .NET CLI dependencies
+ENV JAVA_VERSION=11 \
+    JAVA_HOME="/opt/jvm/openjdk-11" \
+    JDK_HOME="/opt/jvm/openjdk-11" \
+    JRE_HOME="/opt/jvm/openjdk-11" \
+    ANT_VERSION=1.10.3 \
+    MAVEN_HOME="/opt/maven" \
+    MAVEN_VERSION=3.5.4 \
+    MAVEN_CONFIG="/root/.m2" \
+    GRADLE_VERSION=5.0 \
+    SBT_VERSION=1.2.6 \
+    PROPERTIES_COMMON_VERSION=0.92.37.8 \
+    PYTHON_TOOL_VERSION="3.3-*" \
+    JDK_VERSION=11.0.1 \
+    JDK_VERSION_TAG=13 \
+    JDK_DOWNLOAD_SHA256="7a6bb980b9c91c478421f865087ad2d69086a0583aeeb9e69204785e8e97dcfd" \
+    ANT_DOWNLOAD_SHA512="73f2193700b1d1e32eedf25fab1009e2a98fb2f6425413f5c9fa1b0f2f9f49f59cb8ed3f04931c808ae022a64ecfa2619e5fb77643fea6dbc29721e489eb3a07" \
+    MAVEN_DOWNLOAD_SHA1="22cac91b3557586bb1eba326f2f7727543ff15e3" \
+    GRADLE_DOWNLOAD_SHA256="6157ac9f3410bc63644625b3b3e9e96c963afd7910ae0697792db57813ee79a6"
+
+ENV JDK_DOWNLOAD_TAR="openjdk-${JDK_VERSION}_linux-x64_bin.tar.gz"
+
 RUN set -ex \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libc6=2.19-* \
-        libcurl3=7.35.* \
-        libgcc1=1:4.9.* \
-        libgssapi-krb5-2=1.12* \
-        libicu52=52.1-* \
-        liblttng-ust0=2.4.* \
-        libssl1.0.0=1.0.* \
-        libunwind8=1.1-* \
-        libuuid1=2.20.* \
-        zlib1g=1:1.2.* \
-        software-properties-common=0.92.* \
-    && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
+    && apt-get install -y software-properties-common=$PROPERTIES_COMMON_VERSION \
+    && apt-get install -y python-setuptools=$PYTHON_TOOL_VERSION \
+
+    # Install OpenJDK 11
+    # Note: Installing ca-certificates-java installs JDK7 because it's a depedency.
+    # We will use update-alternatives to make sure JDK11 has higher priority for all
+    # the tools
+    && apt-get install -y --no-install-recommends ca-certificates-java \
+
+    && mkdir -p $JAVA_HOME \
+    && curl -LSso /var/tmp/$JDK_DOWNLOAD_TAR https://download.java.net/java/GA/jdk11/$JDK_VERSION_TAG/GPL/$JDK_DOWNLOAD_TAR \
+    && echo "$JDK_DOWNLOAD_SHA256 /var/tmp/$JDK_DOWNLOAD_TAR" | tee foo.txt | sha256sum -c - \
+    && tar xzvf /var/tmp/$JDK_DOWNLOAD_TAR -C $JAVA_HOME --strip-components=1 \
+    && for tool_path in $JAVA_HOME/bin/*; do \
+          tool=`basename $tool_path`; \
+          update-alternatives --install /usr/bin/$tool $tool $tool_path 10000; \
+          update-alternatives --set $tool $tool_path; \
+        done \
+     && rm $JAVA_HOME/lib/security/cacerts && ln -s /etc/ssl/certs/java/cacerts $JAVA_HOME/lib/security/cacerts \
+
+    # Install Ant
+    && curl -LSso /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz https://archive.apache.org/dist/ant/binaries/apache-ant-$ANT_VERSION-bin.tar.gz  \
+    && echo "$ANT_DOWNLOAD_SHA512 /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz" | sha512sum -c - \
+    && tar -xzf /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz -C /opt \
+    && update-alternatives --install /usr/bin/ant ant /opt/apache-ant-$ANT_VERSION/bin/ant 10000 \
+
+    # Install Maven
+    && mkdir -p $MAVEN_HOME \
+    && curl -LSso /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz https://apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
+    && echo "$MAVEN_DOWNLOAD_SHA1 /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz" | sha1sum -c - \
+    && tar xzvf /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz -C $MAVEN_HOME --strip-components=1 \
+    && update-alternatives --install /usr/bin/mvn mvn /opt/maven/bin/mvn 10000 \
+    && mkdir -p $MAVEN_CONFIG \
+
+    # Install Gradle
+    && curl -LSso /var/tmp/gradle-$GRADLE_VERSION-bin.zip https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip \
+    && echo "$GRADLE_DOWNLOAD_SHA256 /var/tmp/gradle-$GRADLE_VERSION-bin.zip" | sha256sum -c - \
+    && unzip /var/tmp/gradle-$GRADLE_VERSION-bin.zip -d /opt \
+    && update-alternatives --install /usr/local/bin/gradle gradle /opt/gradle-$GRADLE_VERSION/bin/gradle 10000 \
+
+    # Install SBT
+    && echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list \
+    && apt-get install -y --no-install-recommends apt-transport-https \
+    && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 \
     && apt-get update \
-    && apt-get install -y libstdc++6=8*\
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends sbt=$SBT_VERSION \
 
-# Install .NET Core SDK
-ENV DOTNET_SDK_VERSION 2.1.302
-ENV DOTNET_SDK_DOWNLOAD_URL https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz
-ENV DOTNET_SDK_DOWNLOAD_SHA 2166986e360f1c3456a33723edb80349e6ede115be04a6331bfbfd0f412494684d174a0cfb21d2feb00d509ce342030160a4b5b445e393ad83bedb613a64bc66
 
-RUN set -ex \
-    && curl -SL $DOTNET_SDK_DOWNLOAD_URL --output dotnet.tar.gz \
-    && echo "$DOTNET_SDK_DOWNLOAD_SHA dotnet.tar.gz" | sha512sum -c - \
-    && mkdir -p /usr/share/dotnet \
-    && tar -zxf dotnet.tar.gz -C /usr/share/dotnet \
-    && rm dotnet.tar.gz \
-    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+     && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+     && apt-get update -qqy \
+     && apt-get -qqy install google-chrome-stable \
+     && rm /etc/apt/sources.list.d/google-chrome.list \
+     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
+     && sed -i 's/"$HERE\/chrome"/"$HERE\/chrome" --no-sandbox/g' /opt/google/chrome/google-chrome \
+     && CHROME_DRIVER_VERSION=2.43 \
+     && wget --no-verbose -O /tmp/chromedriver_linux64.zip https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip \
+     && rm -rf /opt/chromedriver \
+     && unzip /tmp/chromedriver_linux64.zip -d /opt \
+     && rm /tmp/chromedriver_linux64.zip \
+     && mv /opt/chromedriver /opt/chromedriver-$CHROME_DRIVER_VERSION \
+     && chmod 755 /opt/chromedriver-$CHROME_DRIVER_VERSION \
+     &&  ln -fs /opt/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver \
 
-# Trigger the population of the local package cache
-ENV NUGET_XMLDOC_MODE skip
-RUN set -ex \
-    && mkdir warmup \
-    && cd warmup \
-    && dotnet new \
-    && cd .. \
-    && rm -rf warmup \
-    && rm -rf /tmp/NuGetScratch
+    # Cleanup
+    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && apt-get clean
 
-# Install Powershell Core
-# See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
-ENV POWERSHELL_VERSION 6.0.3
-ENV POWERSHELL_DOWNLOAD_URL https://github.com/PowerShell/PowerShell/releases/download/v6.0.3/powershell-6.0.3-linux-x64.tar.gz
-ENV POWERSHELL_DOWNLOAD_SHA A43D3056688FABC442BFBE0FD7A096F7E28036759EFF9D6EBE8CB9155C9D9AAB
-
-RUN set -ex \
-    && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
-    && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
-    && mkdir -p /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && tar zxf powershell.tar.gz -C /opt/microsoft/powershell/$POWERSHELL_VERSION \
-    && rm powershell.tar.gz \
-    && ln -s /opt/microsoft/powershell/$POWERSHELL_VERSION/pwsh /usr/bin/pwsh
+COPY m2-settings.xml $MAVEN_CONFIG/settings.xml
