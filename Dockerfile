@@ -133,7 +133,7 @@ RUN set -ex \
     # We will use update-alternatives to make sure JDK11 has higher priority for all
     # the tools
     && apt-get install -y --no-install-recommends ca-certificates-java \
-
+    
     && mkdir -p $JAVA_HOME \
     && curl -LSso /var/tmp/$JDK_DOWNLOAD_TAR https://download.java.net/java/GA/jdk11/$JDK_VERSION_TAG/GPL/$JDK_DOWNLOAD_TAR \
     && echo "$JDK_DOWNLOAD_SHA256 /var/tmp/$JDK_DOWNLOAD_TAR" | tee foo.txt | sha256sum -c - \
@@ -144,13 +144,13 @@ RUN set -ex \
           update-alternatives --set $tool $tool_path; \
         done \
      && rm $JAVA_HOME/lib/security/cacerts && ln -s /etc/ssl/certs/java/cacerts $JAVA_HOME/lib/security/cacerts \
-
+    
     # Install Ant
     && curl -LSso /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz https://archive.apache.org/dist/ant/binaries/apache-ant-$ANT_VERSION-bin.tar.gz  \
     && echo "$ANT_DOWNLOAD_SHA512 /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz" | sha512sum -c - \
     && tar -xzf /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz -C /opt \
     && update-alternatives --install /usr/bin/ant ant /opt/apache-ant-$ANT_VERSION/bin/ant 10000 \
-
+    
     # Install Maven
     && mkdir -p $MAVEN_HOME \
     && curl -LSso /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz https://apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
@@ -158,39 +158,22 @@ RUN set -ex \
     && tar xzvf /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz -C $MAVEN_HOME --strip-components=1 \
     && update-alternatives --install /usr/bin/mvn mvn /opt/maven/bin/mvn 10000 \
     && mkdir -p $MAVEN_CONFIG \
-
+    
     # Install Gradle
     && curl -LSso /var/tmp/gradle-$GRADLE_VERSION-bin.zip https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip \
     && echo "$GRADLE_DOWNLOAD_SHA256 /var/tmp/gradle-$GRADLE_VERSION-bin.zip" | sha256sum -c - \
     && unzip /var/tmp/gradle-$GRADLE_VERSION-bin.zip -d /opt \
     && update-alternatives --install /usr/local/bin/gradle gradle /opt/gradle-$GRADLE_VERSION/bin/gradle 10000 \
-
+    
     # Install SBT
     && echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list \
     && apt-get install -y --no-install-recommends apt-transport-https \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 \
     && apt-get update \
     && apt-get install -y --no-install-recommends sbt=$SBT_VERSION \
-
-
-     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-     && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
-     && apt-get update -qqy \
-     && apt-get -qqy install google-chrome-stable \
-     && rm /etc/apt/sources.list.d/google-chrome.list \
-     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
-     && sed -i 's/"$HERE\/chrome"/"$HERE\/chrome" --no-sandbox/g' /opt/google/chrome/google-chrome \
-     && CHROME_DRIVER_VERSION=2.43 \
-     && wget --no-verbose -O /tmp/chromedriver_linux64.zip https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip \
-     && rm -rf /opt/chromedriver \
-     && unzip /tmp/chromedriver_linux64.zip -d /opt \
-     && rm /tmp/chromedriver_linux64.zip \
-     && mv /opt/chromedriver /opt/chromedriver-$CHROME_DRIVER_VERSION \
-     && chmod 755 /opt/chromedriver-$CHROME_DRIVER_VERSION \
-     &&  ln -fs /opt/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver \
-
+    
     # Cleanup
-    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
+    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && apt-get clean
 
 COPY m2-settings.xml $MAVEN_CONFIG/settings.xml
