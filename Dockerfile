@@ -36,7 +36,7 @@ ENV DOCKER_BUCKET="download.docker.com" \
 RUN set -ex \
     && echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99use-gzip-compression \
     && apt-get update \
-    && apt install -y apt-transport-https gnupg2 \
+    && apt install -y apt-transport-https gnupg2 ca-certificates \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF \
     && echo "deb https://download.mono-project.com/repo/ubuntu stable-bionic main" | tee /etc/apt/sources.list.d/mono-official-stable.list \
     && apt-get update \
@@ -52,7 +52,7 @@ RUN set -ex \
     && ssh-keyscan -t rsa,dsa -H bitbucket.org >> ~/.ssh/known_hosts \
     && chmod 600 ~/.ssh/known_hosts \
     && apt-get install -y --no-install-recommends \
-       wget python3 python3-dev python3-pip python3-setuptools fakeroot ca-certificates jq \
+       wget python3 python3-dev python3-pip python3-setuptools fakeroot jq \
        netbase gnupg dirmngr bzr mercurial procps \
        tar gzip zip autoconf automake \
        bzip2 file g++ gcc imagemagick \
