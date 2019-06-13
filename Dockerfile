@@ -153,6 +153,7 @@ ENV POWERSHELL_VERSION 6.1.0
 ENV POWERSHELL_DOWNLOAD_URL https://github.com/PowerShell/PowerShell/releases/download/v6.1.0/powershell-6.1.0-linux-x64.tar.gz
 ENV POWERSHELL_DOWNLOAD_SHA 68674CFBA84ABF759C7E10EF6FCD926CBC125D9958E11A1926AF7CF7F604506C
 
+
 RUN set -ex \
     && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
     && echo "$POWERSHELL_DOWNLOAD_SHA powershell.tar.gz" | sha256sum -c - \
