@@ -105,20 +105,15 @@ COPY dockerd-entrypoint.sh /usr/local/bin/
 RUN set -ex \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        libc6=2.19-* \
-        libcurl3=7.35.* \
-        libgcc1=1:4.9.* \
-        libgssapi-krb5-2=1.12* \
-        libicu52=52.1-* \
-        liblttng-ust0=2.4.* \
-        libssl1.0.0=1.0.* \
-        libunwind8=1.1-* \
-        libuuid1=2.20.* \
-        zlib1g=1:1.2.* \
-        software-properties-common=0.92.* \
+        libc6 \
+        libgcc1 \
+        libgssapi-krb5-2 \
+        liblttng-ust0 \
+        libstdc++6 \
+        zlib1g \
+        software-properties-common \
     && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
     && apt-get update \
-    && apt-get install -y libstdc++6=8*\
     && rm -rf /var/lib/apt/lists/*
 
 # Install .NET Core SDK
