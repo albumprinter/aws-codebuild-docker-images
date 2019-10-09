@@ -134,14 +134,14 @@ RUN set -ex \
 ENV PATH "~/.dotnet/tools/:$PATH"
 
 # Trigger the population of the local package cache
-ENV NUGET_XMLDOC_MODE skip
-RUN set -ex \
-    && mkdir warmup \
-    && cd warmup \
-    && dotnet new \
-    && cd .. \
-    && rm -rf warmup \
-    && rm -rf /tmp/NuGetScratch
+# ENV NUGET_XMLDOC_MODE skip
+# RUN set -ex \
+#     && mkdir warmup \
+#     && cd warmup \
+#     && dotnet new \
+#     && cd .. \
+#     && rm -rf warmup \
+#     && rm -rf /tmp/NuGetScratch
 
 # Install Powershell Core
 # See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
