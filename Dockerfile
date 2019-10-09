@@ -112,12 +112,12 @@ RUN set -ex \
         libstdc++6 \
         zlib1g \
         software-properties-common \
+        icu-devtools \
     && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
     && apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install .NET Core SDK
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT true
 ENV DOTNET_SDK_VERSION 2.2.402
 ENV DOTNET_SDK_DOWNLOAD_URL https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz
 ENV DOTNET_SDK_DOWNLOAD_SHA 81937de0874ee837e3b42e36d1cf9e04bd9deff6ba60d0162ae7ca9336a78f733e624136d27f559728df3f681a72a669869bf91d02db47c5331398c0cfda9b44
@@ -132,6 +132,10 @@ RUN set -ex \
 
 # Add .NET Core Global Tools install folder to PATH
 ENV PATH "~/.dotnet/tools/:$PATH"
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8
 
 # Trigger the population of the local package cache
 ENV NUGET_XMLDOC_MODE skip
