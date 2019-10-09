@@ -117,6 +117,7 @@ RUN set -ex \
     && rm -rf /var/lib/apt/lists/*
 
 # Install .NET Core SDK
+ENV CORECLR_GLOBAL_INVARIANT 1
 ENV DOTNET_SDK_VERSION 2.2.402
 ENV DOTNET_SDK_DOWNLOAD_URL https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz
 ENV DOTNET_SDK_DOWNLOAD_SHA 81937de0874ee837e3b42e36d1cf9e04bd9deff6ba60d0162ae7ca9336a78f733e624136d27f559728df3f681a72a669869bf91d02db47c5331398c0cfda9b44
