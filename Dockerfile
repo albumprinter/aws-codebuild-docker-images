@@ -1,4 +1,4 @@
-# Copyright 2017-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the License.
 # A copy of the License is located at
@@ -11,37 +11,40 @@
 
 FROM ubuntu:18.04
 
-ENV RUBY_VERSION="2.6.2" \
- PYTHON_VERSION="3.7.3" \
- PHP_VERSION=7.3.3 \
- JAVA_VERSION=11 \ 
- NODE_VERSION="10.15.3" \
- NODE_8_VERSION="8.15.1" \
- GOLANG_VERSION="1.12.4" \
- DOTNET_SDK_VERSION="2.2.105" \
- DOCKER_VERSION="18.09.3" \
- DOCKER_COMPOSE_VERSION="1.23.2"
+ENV RUBY_VERSION="2.6.4" \
+ PYTHON_VERSION="3.7.4" \
+ PHP_VERSION=7.3.9 \
+ JAVA_VERSION=11 \
+ NODE_VERSION="10.16.3" \
+ NODE_8_VERSION="8.16.0" \
+ GOLANG_VERSION="1.13" \
+ GOLANG_12_VERSION="1.12.9" \
+ DOTNET_SDK_VERSION="2.2.402" \
+ DOCKER_VERSION="18.09.6" \
+ DOCKER_COMPOSE_VERSION="1.24.0"
 
+ARG CHINA_REGION
 
-#****************        Utilities     ********************************************* 
-ENV DOCKER_BUCKET="download.docker.com" \    
+#****************        Utilities     *********************************************
+ENV DOCKER_BUCKET="download.docker.com" \
     DOCKER_CHANNEL="stable" \
-    DOCKER_SHA256="8b886106cfc362f1043debfe178c35b6f73ec42380b034a3919a235fe331e053" \
-    DIND_COMMIT="3b5fac462d21ca164b3778647420016315289034" \    
+    DOCKER_SHA256="1f3f6774117765279fce64ee7f76abbb5f260264548cf80631d68fb2d795bb09" \
+    DIND_COMMIT="3b5fac462d21ca164b3778647420016315289034" \
     GITVERSION_VERSION="4.0.0" \
     DEBIAN_FRONTEND="noninteractive" \
     SRC_DIR="/usr/src"
+
 
 # Install git, SSH, and other utilities
 RUN set -ex \
     && echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99use-gzip-compression \
     && apt-get update \
-    && apt install -y apt-transport-https gnupg2 ca-certificates \
+    && apt install -y apt-transport-https gnupg ca-certificates \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF \
     && echo "deb https://download.mono-project.com/repo/ubuntu stable-bionic main" | tee /etc/apt/sources.list.d/mono-official-stable.list \
     && apt-get update \
     && apt-get install software-properties-common -y --no-install-recommends \
-    && apt-add-repository ppa:git-core/ppa \
+    && apt-add-repository -y ppa:git-core/ppa \
     && apt-get update \
     && apt-get install git=1:2.* -y --no-install-recommends \
     && git version \
@@ -53,7 +56,7 @@ RUN set -ex \
     && chmod 600 ~/.ssh/known_hosts \
     && apt-get install -y --no-install-recommends \
        wget python3 python3-dev python3-pip python3-setuptools fakeroot jq \
-       netbase gnupg dirmngr bzr mercurial procps \
+       netbase dirmngr bzr mercurial procps \
        tar gzip zip autoconf automake \
        bzip2 file g++ gcc imagemagick \
        libbz2-dev libc6-dev libcurl4-openssl-dev libdb-dev \
@@ -72,6 +75,7 @@ RUN set -ex \
        libxml2-utils libyaml-perl python-bzrlib python-configobj \
        sgml-base sgml-data subversion tcl tcl8.6 xml-core xmlto xsltproc \
        tk gettext gettext-base libapr1 libaprutil1 xvfb expect parallel \
+       locales rsync \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -83,6 +87,7 @@ RUN set -ex \
     && rm /tmp/GitVersion_${GITVERSION_VERSION}.zip \
     && echo "mono /usr/local/GitVersion_${GITVERSION_VERSION}/GitVersion.exe \$@" >> /usr/local/bin/gitversion \
     && chmod +x /usr/local/bin/gitversion
+
 # Install Docker
 RUN set -ex \
     && curl -fSL "https://${DOCKER_BUCKET}/linux/static/${DOCKER_CHANNEL}/x86_64/docker-${DOCKER_VERSION}.tgz" -o docker.tgz \
@@ -103,12 +108,12 @@ RUN set -ex \
 
 # https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_installation.html
 RUN curl -sS -o /usr/local/bin/aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.11.5/2018-12-06/bin/linux/amd64/aws-iam-authenticator \
- && curl -sS -o /usr/local/bin/kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.11.5/2018-12-06/bin/linux/amd64/kubectl \
- && curl -sS -o /usr/local/bin/ecs-cli https://s3.amazonaws.com/amazon-ecs-cli/ecs-cli-linux-amd64-latest \
- && chmod +x /usr/local/bin/kubectl /usr/local/bin/aws-iam-authenticator /usr/local/bin/ecs-cli
+    && curl -sS -o /usr/local/bin/kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.11.5/2018-12-06/bin/linux/amd64/kubectl \
+    && curl -sS -o /usr/local/bin/ecs-cli https://s3.amazonaws.com/amazon-ecs-cli/ecs-cli-linux-amd64-latest \
+    && chmod +x /usr/local/bin/kubectl /usr/local/bin/aws-iam-authenticator /usr/local/bin/ecs-cli
 
 RUN set -ex \
-    && pip3 install awscli boto3  
+    && pip3 install awscli boto3
 
 VOLUME /var/lib/docker
 
@@ -135,25 +140,24 @@ RUN set -ex \
 
 #**************** END RUBY *****************************************************
 
-#****************        PYTHON     ********************************************* 
+#****************        PYTHON     *********************************************
 ENV PATH="/usr/local/bin:$PATH" \
     GPG_KEY="0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D" \
-    PYTHON_PIP_VERSION="19.0.3" \
+    PYTHON_PIP_VERSION="19.1.1" \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         tcl-dev tk-dev \
     && rm -rf /var/lib/apt/lists/* \
-    \
-    && wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" \
-    && wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
+    && wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" && \
+    wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
     && (gpg --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "$GPG_KEY" \
-        || gpg --keyserver pgp.mit.edu --recv-keys "$GPG_KEY" \
-        || gpg --keyserver keyserver.ubuntu.com --recv-keys "$GPG_KEY") \
+        || gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$GPG_KEY" \
+        || gpg --keyserver pgp.mit.edu --recv-keys "$GPG_KEY") \
     && gpg --batch --verify python.tar.xz.asc python.tar.xz \
-    && rm -r "$GNUPGHOME" python.tar.xz.asc \
+    && rm -rf "$GNUPGHOME" python.tar.xz.asc \
     && mkdir -p /usr/src/python \
     && tar -xJC /usr/src/python --strip-components=1 -f python.tar.xz \
     && rm python.tar.xz \
@@ -165,7 +169,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && make -j$(nproc) \
     && make install \
     && ldconfig \
-    \
 # explicit path to "pip3" to ensure distribution-provided "pip3" cannot interfere
     && if [ ! -e /usr/local/bin/pip3 ]; then : \
         && wget -O /tmp/get-pip.py 'https://bootstrap.pypa.io/get-pip.py' \
@@ -177,6 +180,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # https://github.com/docker-library/python/pull/143#issuecomment-241032683
     && pip3 install --no-cache-dir --upgrade --force-reinstall "pip==$PYTHON_PIP_VERSION" \
         && pip install pipenv virtualenv --no-cache-dir \
+        && pip3 install --no-cache-dir --upgrade setuptools wheel \
 # then we use "pip list" to ensure we don't have more than one pip version installed
 # https://github.com/docker-library/python/pull/100
     && [ "$(pip list |tac|tac| awk -F '[ ()]+' '$1 == "pip" { print $2; exit }')" = "$PYTHON_PIP_VERSION" ] \
@@ -196,11 +200,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s python3 python \
     && ln -s python3-config python-config \
         && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
-#****************      END PYTHON     ********************************************* 
+#****************      END PYTHON     *********************************************
 
 #****************      PHP     ****************************************************
  ENV GPG_KEYS CBAF69F173A0FEA4B537F470D66C9593118BCCB6 F38252826ACD957EF380D39F2F7956BC5DA04B5D
- ENV PHP_DOWNLOAD_SHA="6bb03e79a183d0cb059a6d117bbb2e0679cab667fb713a13c6a16f56bebab9b3" \
+ ENV PHP_DOWNLOAD_SHA="4007f24a39822bef2805b75c625551d30be9eeed329d52eb0838fa5c1b91c1fd" \
      PHPPATH="/php" \
      PHP_INI_DIR="/usr/local/etc/php" \
      PHP_CFLAGS="-fstack-protector -fpic -fpie -O2" \
@@ -217,18 +221,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
      export GNUPGHOME="$(mktemp -d)"; \
      for key in $GPG_KEYS; do \
-         ( gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" \
-           || gpg --keyserver pgp.mit.edu --recv-keys "$key" \
-           || gpg --keyserver keyserver.pgp.com --recv-keys "$key" ); \
+         ( gpg --batch --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "$key" \
+           || gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" \
+           || gpg --keyserver pgp.mit.edu --recv-keys "$key" ); \
      done; \
      gpg --batch --verify php.tar.xz.asc php.tar.xz; \
-     rm -rf "$GNUPGHOME"; \ 
+     rm -rf "$GNUPGHOME"; \
      set -eux; \
      savedAptMark="$(apt-mark showmanual)"; \
      apt-get update; \
      apt-get install -y --no-install-recommends libedit-dev dpkg-dev libargon2-0-dev; \
      rm -rf /var/lib/apt/lists/*; \
-     apt-get clean; \ 
+     apt-get clean; \
      export \
          CFLAGS="$PHP_CFLAGS" \
          CPPFLAGS="$PHP_CPPFLAGS" \
@@ -292,13 +296,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      mkdir "$PHP_INI_DIR/conf.d"; \
      touch "$PHP_INI_DIR/conf.d/memory.ini" \
      && echo "memory_limit = 1G;" >> "$PHP_INI_DIR/conf.d/memory.ini";
- 
+
  ENV PATH="$PHPPATH/bin:/usr/local/php/bin:$PATH"
- 
+
  # Install Composer globally
  RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 #****************      END PHP     ****************************************************
- 
+
 #****************      NODEJS     ****************************************************
 
  ENV N_SRC_DIR="$SRC_DIR/n"
@@ -310,7 +314,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
      && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
      && apt-get update && apt-get install -y --no-install-recommends yarn \
-     && cd / && rm -rf $N_SRC_DIR; 
+     && cd / && rm -rf $N_SRC_DIR;
 
 #****************      END NODEJS     ****************************************************
 
@@ -324,25 +328,27 @@ ENV JAVA_11_HOME="/opt/jvm/openjdk-11" \
     JAVA_8_HOME="/usr/lib/jvm/java-8-openjdk-amd64" \
     JDK_8_HOME="/usr/lib/jvm/java-8-openjdk-amd64" \
     JRE_8_HOME="/usr/lib/jvm/java-8-openjdk-amd64/jre" \
-    ANT_VERSION=1.10.5 \
+    ANT_VERSION=1.10.6 \
     MAVEN_HOME="/opt/maven" \
-    MAVEN_VERSION=3.6.0 \
+    MAVEN_VERSION=3.6.1 \
     MAVEN_CONFIG="/root/.m2" \
-    INSTALLED_GRADLE_VERSIONS="4.10.3 5.3" \
-    GRADLE_VERSION=5.3 \
+    INSTALLED_GRADLE_VERSIONS="4.10.3 5.4.1" \
+    GRADLE_VERSION=5.4.1 \
     SBT_VERSION=1.2.8 \
     JDK_VERSION=11.0.2 \
     JDK_VERSION_TAG=9 \
     ANDROID_HOME="/usr/local/android-sdk-linux" \
     GRADLE_PATH="$SRC_DIR/gradle" \
     ANDROID_SDK_MANAGER_VER="4333796" \
-    ANDROID_SDK_BUILD_TOOLS="build-tools;28.0.3" \
-    ANDROID_SDK_PLATFORM_TOOLS="platforms;android-28" \
-    ANDROID_SDK_EXTRAS="extras;android;m2repository extras;google;m2repository extras;google;google_play_services" \   
+    ANDROID_SDK_BUILD_TOOLS="build-tools;29.0.2" \
+    ANDROID_SDK_PLATFORM_TOOLS="platforms;android-29" \
+    ANDROID_SDK_BUILD_TOOLS_28="build-tools;28.0.3" \
+    ANDROID_SDK_PLATFORM_TOOLS_28="platforms;android-28" \
+    ANDROID_SDK_EXTRAS="extras;android;m2repository extras;google;m2repository extras;google;google_play_services" \
     JDK_DOWNLOAD_SHA256="99be79935354f5c0df1ad293620ea36d13f48ec3ea870c838f20c504c9668b57" \
-    ANT_DOWNLOAD_SHA512="acfa34c4f820d882f26ec67cf885d7dd484d534a7e99b33b05779e03da61849610328d2dbb4bfaa201e1ae75a0f0901e9c2bb793ed7bd76d3e4497e6ca5de371" \
-    MAVEN_DOWNLOAD_SHA512="fae9c12b570c3ba18116a4e26ea524b29f7279c17cbaadc3326ca72927368924d9131d11b9e851b8dc9162228b6fdea955446be41207a5cfc61283dd8a561d2f" \
-    GRADLE_DOWNLOADS_SHA256="f4d820c2a9685710eba5b92f10e0e4fb20e0d6c0dd1f46971e658160f25e7147 5.3\n336b6898b491f6334502d8074a6b8c2d73ed83b92123106bd4bf837f04111043 4.10.3" \
+    ANT_DOWNLOAD_SHA512="c1a9694c3018e248000ff6f46d48af85f537ef3935e0d5256543c58a240084c0aff5289fd9e94cbc40d5442f3cc43592398047f2548fded40d9882be2b40750d" \
+    MAVEN_DOWNLOAD_SHA512="b4880fb7a3d81edd190a029440cdf17f308621af68475a4fe976296e71ff4a4b546dd6d8a58aaafba334d309cc11e638c52808a4b0e818fc0fd544226d952544" \
+    GRADLE_DOWNLOADS_SHA256="14cd15fc8cc8705bd69dcfa3c8fefb27eb7027f5de4b47a8b279218f76895a91 5.4.1\n336b6898b491f6334502d8074a6b8c2d73ed83b92123106bd4bf837f04111043 4.10.3" \
     ANDROID_SDK_MANAGER_SHA256="92ffee5a1d98d856634e8b71132e8a95d96c83a63fde1099be3d86df3106def9"
 
 ENV JDK_DOWNLOAD_TAR="openjdk-${JDK_VERSION}_linux-x64_bin.tar.gz" \
@@ -376,6 +382,7 @@ RUN set -ex \
     && ln -s ${ANDROID_HOME}/tools/android /usr/bin/android \
     # Install Android
     && android-accept-licenses.sh "env JAVA_HOME=$JAVA_8_HOME JRE_HOME=$JRE_8_HOME JDK_HOME=$JDK_8_HOME sdkmanager --verbose platform-tools ${ANDROID_SDK_BUILD_TOOLS} ${ANDROID_SDK_PLATFORM_TOOLS} ${ANDROID_SDK_EXTRAS} ${ANDROID_SDK_NDK_TOOLS}" \
+    && android-accept-licenses.sh "env JAVA_HOME=$JAVA_8_HOME JRE_HOME=$JRE_8_HOME JDK_HOME=$JDK_8_HOME sdkmanager --verbose platform-tools ${ANDROID_SDK_BUILD_TOOLS_28} ${ANDROID_SDK_PLATFORM_TOOLS_28}" \
     && android-accept-licenses.sh "env JAVA_HOME=$JAVA_8_HOME JRE_HOME=$JRE_8_HOME JDK_HOME=$JDK_8_HOME sdkmanager --licenses" \
     && apt-get install -y python-setuptools \
     # Install OpenJDK 11
@@ -389,19 +396,19 @@ RUN set -ex \
           update-alternatives --install /usr/bin/$tool $tool $tool_path 10000; \
           update-alternatives --set $tool $tool_path; \
         done \
-     && rm $JAVA_HOME/lib/security/cacerts && ln -s /etc/ssl/certs/java/cacerts $JAVA_HOME/lib/security/cacerts \     
+     && rm $JAVA_HOME/lib/security/cacerts && ln -s /etc/ssl/certs/java/cacerts $JAVA_HOME/lib/security/cacerts \
     # Install Ant
     && curl -LSso /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz https://archive.apache.org/dist/ant/binaries/apache-ant-$ANT_VERSION-bin.tar.gz  \
     && echo "$ANT_DOWNLOAD_SHA512 /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz" | sha512sum -c - \
     && tar -xzf /var/tmp/apache-ant-$ANT_VERSION-bin.tar.gz -C /opt \
-    && update-alternatives --install /usr/bin/ant ant /opt/apache-ant-$ANT_VERSION/bin/ant 10000 \    
+    && update-alternatives --install /usr/bin/ant ant /opt/apache-ant-$ANT_VERSION/bin/ant 10000 \
     # Install Maven
     && mkdir -p $MAVEN_HOME \
     && curl -LSso /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz https://apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
     && echo "$MAVEN_DOWNLOAD_SHA512 /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz" | sha512sum -c - \
     && tar xzvf /var/tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz -C $MAVEN_HOME --strip-components=1 \
     && update-alternatives --install /usr/bin/mvn mvn /opt/maven/bin/mvn 10000 \
-    && mkdir -p $MAVEN_CONFIG \    
+    && mkdir -p $MAVEN_CONFIG \
     # Install Gradle
     && mkdir -p $GRADLE_PATH \
     && for version in $INSTALLED_GRADLE_VERSIONS; do { \
@@ -418,20 +425,20 @@ RUN set -ex \
      }; done \
     # Install default GRADLE_VERSION to path
       && ln -s /usr/local/gradle-$GRADLE_VERSION/bin/gradle /usr/bin/gradle \
-      && rm -rf $GRADLE_PATH \   
+      && rm -rf $GRADLE_PATH \
     # Install SBT
     && echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list \
     && apt-get install -y --no-install-recommends apt-transport-https \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 \
     && apt-get update \
-    && apt-get install -y --no-install-recommends sbt=$SBT_VERSION \    
+    && apt-get install -y --no-install-recommends sbt=$SBT_VERSION \
     # Cleanup
     && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && apt-get clean
 #****************     END JAVA     ****************************************************
 
-#****************     GO     **********************************************************
-ENV GOLANG_DOWNLOAD_SHA256="d7d1f1f88ddfe55840712dc1747f37a790cbcaa448f6c9cf51bbe10aa65442f5" \
+#****************     GO (latest 1.13)    **********************************************************
+ENV GOLANG_DOWNLOAD_SHA256="68a2297eb099d1a76097905a2ce334e3155004ec08cdea85f24527be3c48e856" \
     GOPATH="/go" \
     DEP_VERSION="0.5.1" \
     DEP_BINARY="dep-linux-amd64"
@@ -444,12 +451,27 @@ RUN set -ex \
     && apt-get clean \
     && wget "https://dl.google.com/go/go$GOLANG_VERSION.linux-amd64.tar.gz" -O /tmp/golang.tar.gz \
     && echo "$GOLANG_DOWNLOAD_SHA256 /tmp/golang.tar.gz" | sha256sum -c - \
-    && tar -xzf /tmp/golang.tar.gz -C /usr/local \
+    && tar -xzf /tmp/golang.tar.gz -C /tmp \
+    && mv /tmp/go /usr/local/go13  \
     && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && wget "https://github.com/golang/dep/releases/download/v$DEP_VERSION/$DEP_BINARY" -O "$GOPATH/bin/dep" \
     && chmod +x "$GOPATH/bin/dep"
 
+RUN ln -s /usr/local/go13 /usr/local/go
+
 ENV PATH="$GOPATH/bin:/usr/local/go/bin:$PATH"
+
+#***************    GO 1.12   *************************************************
+
+ENV GOLANG_12_DOWNLOAD_SHA256="ac2a6efcc1f5ec8bdc0db0a988bb1d301d64b6d61b7e8d9e42f662fbb75a2b9b"
+
+RUN set -ex \
+    && wget "https://dl.google.com/go/go$GOLANG_12_VERSION.linux-amd64.tar.gz" -O /tmp/golang.tar.gz \
+    && echo "$GOLANG_12_DOWNLOAD_SHA256 /tmp/golang.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/golang.tar.gz -C /tmp \
+    && mv /tmp/go /usr/local/go12  \
+    && rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 #****************     END GO     **********************************************************
 
 #****************     .NET-CORE     *******************************************************
@@ -464,12 +486,12 @@ RUN set -ex \
         zlib1g \
         software-properties-common \
     && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
-    && apt-get update \   
+    && apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install .NET Core SDK
 ENV DOTNET_SDK_DOWNLOAD_URL https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz
-ENV DOTNET_SDK_DOWNLOAD_SHA B7AD26B344995DE91848ADEC56BDA5DFE5FEF0B83ABAA3E4376DC790CF9786E945B625DE1AE4CECAF5C5BEF86284652886ED87696581553AEDA89EE2E2E99517
+ENV DOTNET_SDK_DOWNLOAD_SHA 81937de0874ee837e3b42e36d1cf9e04bd9deff6ba60d0162ae7ca9336a78f733e624136d27f559728df3f681a72a669869bf91d02db47c5331398c0cfda9b44
 
 RUN set -ex \
     && curl -SL $DOTNET_SDK_DOWNLOAD_URL --output dotnet.tar.gz \
@@ -494,9 +516,9 @@ RUN set -ex \
 
 # Install Powershell Core
 # See instructions at https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-linux
-ENV POWERSHELL_VERSION 6.1.3
+ARG POWERSHELL_VERSION=6.2.1
 ENV POWERSHELL_DOWNLOAD_URL https://github.com/PowerShell/PowerShell/releases/download/v$POWERSHELL_VERSION/powershell-$POWERSHELL_VERSION-linux-x64.tar.gz
-ENV POWERSHELL_DOWNLOAD_SHA E728B51487288FB395C2BA41CE978DE265049C5BD995AFF0B06F1573DB831C8B
+ENV POWERSHELL_DOWNLOAD_SHA E8287687C99162BF70FEFCC2E492F3B54F80BE880D86B9A0EC92C71B05C40013
 
 RUN set -ex \
     && curl -SL $POWERSHELL_DOWNLOAD_URL --output powershell.tar.gz \
@@ -508,15 +530,27 @@ RUN set -ex \
 #****************     END .NET-CORE     *******************************************************
 
 #****************    HEADLESS BROWSERS     *******************************************************
+# Install Firefox
+
 RUN set -ex \
-    && apt-add-repository "deb http://archive.canonical.com/ubuntu $(lsb_release -sc) partner" \
-    && apt-add-repository ppa:malteworld/ppa && apt-get update \
+    && apt-add-repository -y "deb http://archive.canonical.com/ubuntu $(lsb_release -sc) partner" \
+    && apt-add-repository -y ppa:malteworld/ppa && apt-get update \
     && apt-get install -y libgtk-3-0 libglib2.0-0 libdbus-glib-1-2 libdbus-1-3 libasound2 \
     && wget -O ~/FirefoxSetup.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64" \
     && tar xjf ~/FirefoxSetup.tar.bz2 -C /opt/ \
     && ln -s /opt/firefox/firefox /usr/local/bin/firefox \
     && rm ~/FirefoxSetup.tar.bz2 \
     && firefox --version
+
+# Install GeckoDriver
+
+RUN set -ex \
+    && curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | grep browser_download_url | grep linux64.tar.gz | cut -d : -f 2,3 | tr -d ' "' | wget -O /tmp/geckodriver-latest-linux64.tar.gz -qi - \
+    && tar -xzf /tmp/geckodriver-latest-linux64.tar.gz -C /opt \
+    && rm /tmp/geckodriver-latest-linux64.tar.gz \
+    && chmod 755 /opt/geckodriver \
+    && ln -s /opt/geckodriver /usr/bin/geckodriver \
+    && geckodriver --version
 
 # Install Chrome
 
@@ -526,3 +560,20 @@ RUN set -ex \
     && rm -rf /tmp/google-chrome-stable_current_amd64.deb \
     && sed -i 's|HERE/chrome"|HERE/chrome" --disable-setuid-sandbox --no-sandbox|g' "/opt/google/chrome/google-chrome" \
     && google-chrome --version
+
+# Install ChromeDriver
+
+RUN set -ex \
+    && CHROME_VERSION=`google-chrome --version | awk -F '[ .]' '{print $3"."$4"."$5}'` \
+    && CHROME_DRIVER_VERSION=`wget -qO- chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION` \
+    && wget --no-verbose -O /tmp/chromedriver_linux64.zip https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip \
+    && unzip /tmp/chromedriver_linux64.zip -d /opt \
+    && rm /tmp/chromedriver_linux64.zip \
+    && mv /opt/chromedriver /opt/chromedriver-$CHROME_DRIVER_VERSION \
+    && chmod 755 /opt/chromedriver-$CHROME_DRIVER_VERSION \
+    && ln -s /opt/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver \
+    && chromedriver --version
+
+ENTRYPOINT ["dockerd-entrypoint.sh"]
+
+
